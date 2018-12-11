@@ -1,0 +1,525 @@
+Escalar aplicaciones usando Kubernetes
+Una introducción a Kubernetes, sus componentes y su rol en el desarrollo y despliegue de aplicaciones.
+06 Dec 2018
+
+Tags: kubernetes, docker, containers
+
+Carlos Ponce
+Estudiante de Ingeniería Civil Informática
+cponce@alumnos.inf.utfsm.cl
+
+* cponce@inf.utfsm.cl:~$ whoami
+
+- SysAdmin @ Computer Systems Research Group
+- Ayudante @ LabComp
+
+Mis intereses:
+
+- Tecnologías de virtualización
+- Contenedores Linux
+- Open-Source en general
+
+* Micro servicios
+
+.image images/microservices.png _ 900
+
+.caption Monolitico vs Micro servicios by [[https://www.weave.works][weave.works]]
+
+* Micro servicios
+
+Al dividir el software logramos:
+
+- Cada componente o servicio se desarrolla a su propio ritmo
+
+- Aceleramos el proceso de desarrollo
+
+- Los problemas y errores ocurren en un componente en particular
+
+- Manejar los recursos de cada componente por separado
+
+* Micro servicios
+
+Pero necesitamos:
+
+- Automatización
+
+- Estandarización
+
+- Flexibilidad en los recursos
+
+- Orquestación de servicios
+
+* En esta charla hablaremos sobre...
+
+En general, de estas necesidades:
+
+- Estandarización (Contenedores / Kubernetes)
+
+- Flexibilidad en los recursos (Contenedores / Kubernetes)
+
+- Orquestación de servicios (Kubernetes)
+
+En el área técnica:
+
+- Como desplegar aplicaciones docker en un cluster de recursos compartidos.
+
+* Contenedores
+
+Hoy en día, las aplicaciones tienen varios tipos de dependencias especificas...
+
+** Un entorno de ejecución determinado
+
+- Una versión especifica de node: v8.11.1
+- Una determinada biblioteca en especifico: libssl.so.1.1
+- Una versión especifica de la Java Virtual Machine: openjdk 9.0.4
+- Podríamos incluso ser más específicos: PHP 7.2.10-0ubuntu0.18.04.1
+
+* Contenedores
+
+** Dependencia de determinadas aplicaciones externas
+
+- MariaDB v10.2
+- PostgreSQL 9
+- Apache/2.4.34
+- nginx/1.12.2
+
+* Contenedores
+
+En palabras simples...
+
+Los contenedores de Linux son tecnologías permiten empaquetar y aislar aplicaciones con todo su entorno de tiempo de ejecución.
+
+Esto nos da la capacidad de mover la aplicación contenida entre entornos (desarrollo, prueba, producción, etc.) al mismo tiempo que conserva toda la funcionalidad.
+
+* Contenedores
+
+En especifico: Docker
+
+.image images/docker-package-software.png _ 600
+ 
+* En especifico: Docker
+
+Diseñado para facilitar la creación, implementación y ejecución de aplicaciones mediante el uso de contenedores.
+
+- Empaqueta los binarios y sus dependencias en un solo lugar
+- Provee isolación entre distintos contenedores
+- Provee una forma estándar de almacenar, transportar y ejecutar aplicaciones
+- Portátil entre distintos ambientes de ejecución
+
+
+* Usar docker es una gran forma de empaquetar y ejecutar aplicaciones
+
+- Todas las dependencias en un solo lugar
+- Inicio rapido en comparación a maquinas virtuales
+- Poco overhead en la ejecución
+- Facil de crear
+- Facil de reemplazar en caso de fallas
+
+.image images/container_red.jpg _ 400
+
+* Pero si nos enfocamos en micro servicios...
+
+Cada aplicación tiene multiples componentes: 
+
+- Base de datos
+- Servidor backend
+- Servidor frontend
+- Servidor web o reverse proxy
+
+.image images/containers.jpg _ 480
+
+* El problema es la escala...
+
+.image images/port_containers.jpeg 640 _
+
+* El problema es la escala...
+
+Sin embargo, no todas las organizaciones despliegan sus aplicaciones de la misma manera.
+
+Necesitamos un sistema que nos permita:
+
+- Escalar nuestras aplicaciones en base a la necesidad de cada organización
+- Controlar y asignar los recursos de manera justa y eficiente
+- Realizar actualizaciones de manera periodica sin interrumpir la operacion de los otros componentes o aplicaciones
+
+En otras palabras necesitamos un *sistema* *de* *orquestación* _(del_inglés_orchestration_system)_:
+
+- Asignar de manera automatica contenedores a determinadas maquinas en un _cluster_.
+
+* Orchestration
+
+.image images/kubernetes-logo.png
+
+* ¿Qué es Kubernetes?
+
+El nombre Kubernetes (kube o k8s para abreviar) proviene del griego, que significa timonel o piloto.
+
+.image images/kubernetes-greek-etymology.png _ 800
+
+* ¿Qué es Kubernetes?
+
+- La definición:  Kubernetes es una plataforma portátil y extensible de código abierto para la gestión de cargas de trabajo y servicios en contenedores, que facilita tanto la configuración *declarativa* como la automatización.
+- Google publicó el proyecto Kubernetes como open-source en 2014, esta basado en Borg, el sistema interno que utilizó Google durante una década y media para la gestión de clusters de workloads en producción a escala.
+
+* La arquitectura de K8S
+
+.image images/kubernetes-cluster.png _ 800
+
+* La arquitectura de K8S: Maestro
+
+- *API* *Server*
+
+Componente que expone la API interna de kube y por el cual se realizan modificaciones a sus componentes.
+
+- *etcd*
+
+Almacenamiento externo del tipo llave:valor de alta disponibilidad en el cual se almacena toda la información del estado actual del cluster.
+
+- *Scheduler*
+
+Componente que espera por nuevos contenedores que aún no han sido asignados a algún _nodo_ y los asigna de la manera más eficiente posible.
+
+- *Controller* *Manager*
+
+Componente que se encarga de ejecutar controladores internos del cluster.
+
+* La arquitectura de K8S: Maestro - Controller Manager
+
+El controller manager se encarga de ejecutar los siguientes controladores:
+
+*Node* *Controller*
+
+Responsable por notar y actuar en caso que un _nodo_ del cluster desaparece
+
+*Replication* *Controller*
+
+Responsable por velar y asignar la correcta cantidad de replicas o copias de un contenedor.
+
+*Endpoints* *Controller*
+
+Responsable de conectar los _servicios_ con los contenedores de manera correcta.
+
+*Service* *Account* *&* *Token* *Controller*
+
+Responsable de manejar y controlar los accesos a la API interna de manera segura.
+
+* La arquitectura de K8S: Nodos
+
+Estos componentes se ejecutan en cada nodo del cluster, mantienen la ejecución de los contenedores y se mantienen comunicados con el maestro esperando por instrucciones.
+
+- *kubelet*
+
+Demonio que se ejecuta en el nodo, es quien revisa que todos los contenedores necesarios estén en un estado saludable.
+
+- *kube-proxy*
+
+Consiste en un conjunto de reglas en el _firewall_ de cada nodo, permite que los contenedores se comuniquen entre ellos y hacia el mundo exterior
+
+- *Container* *Runtime*
+
+El software responsable de ejecutar los contenedores, en la mayoría de los casos es Docker, pero kubernetes soporta varias otras _runtimes_
+
+* Una vista simplificada hasta ahora
+
+.image images/module_01_cluster.svg _ 800
+
+* kubectl
+
+Este comando nos permite interactuar con el cluster, en palabras simples, es un cliente de la API interna.
+
+Podemos crear, actualizar, leer y eliminar recursos de nuestro cluster con este comando.
+
+* Demo 1 - kubectl
+
+	kubectl get nodes
+
+	kubectl get nodes -o wide
+
+	kubectl get node <node-name> -o yaml
+
+	kubectl drain <node-name>
+
+	kubectl get nodes
+
+	kubectl uncordon <node-name>
+
+	kubectl get nodes
+
+* Pods
+
+Parte de lo que he dicho anteriormente es mentira.
+
+La unidad mínima que se puede representar en kubernetes es un Pod, no un contenedor.
+
+Por lo tanto el ControllerManager, ReplicationController no ven contenedores, ellos ven pods.
+
+Solo kubelet puede observar pods y contenedores, después de todo él es el encargado de ejecutarlos.
+
+* Pods
+
+- El pilar básico en k8s, la más pequeña y simple unidad que puede ser representada por el modelo de objetos que puede ser creado o desplegado.
+
+- Contiene a uno o más contenedores, recursos de almacenamiento, una dirección IP virtual única y configuración sobre como deberían ejecutarse los contenedores.
+
+.image images/module_03_pods.svg 360 _
+
+* Demo 2 - Pod con un contenedor
+
+¿Recuerdan que mencione que k8s utiliza configuraciones *declarativas*?, a esto me refería:
+
+	apiVersion: v1
+	kind: Pod
+	metadata:
+	  name: hello-web
+	spec:
+	  containers:
+	    - image: nginx
+	      name: httpserver
+	      ports:
+	      - containerPort: 80
+
+Este archivo en formato *yaml* representa un pod en el modelo de k8s.
+
+	kubectl create -f demo2.yaml
+	kubectl get pods -o wide
+	curl -v <pod-ip>
+	kubectl delete -f demo2.yaml
+
+* Pods: Múltiples contenedores
+
+- Pods con múltiples que necesitan trabajar juntos
+
+Un pod encapsulara los contenedores que necesitan compartir recursos.
+
+Estos contenedores podrían formar una única unidad o aplicación con roles diferentes, por ejemplo, un contenedor podría ser un servidor web y el otro podría actualizar los contenidos que se presentan.
+
+.image images/pod.svg _ 280
+
+* Pods: Red
+
+- A cada pod se le asigna una *única* IP virtual.
+- Todos los contenedores en un pod comparten el _namespace_ de red, por lo que tienen la misma IP y ven los mismos puertos.
+- Gracias a esto, contenedores en un mismo pod pueden comunicarse a través de *localhost*
+- Es trabajo de los contenedores coordinar el uso de los recursos de red (como puertos).
+
+.image images/pods-network.png _ 500
+
+* Pods: Almacenamiento
+
+- Un pod puede especificar un conjunto de volúmenes compartidos
+- Todos los contenedores en un pod tienen acceso a estos volúmenes, permitiéndoles compartir datos
+- Usando volúmenes podemos almacenar datos persistentes, que los datos sobrevivan en caso que los contenedores deban ser reiniciados.
+
+.image images/pods-storage.png _ 500
+
+* Demo 3 - Pod con múltiples contenedores
+
+	apiVersion: v1
+	kind: Pod
+	metadata:
+	  name: multiple-http
+	spec:
+	  volumes:
+	  - name: html
+	    emptyDir: {}
+	  containers:
+	  - name: webserver
+	    image: nginx
+	    volumeMounts:
+	    - name: html
+	      mountPath: /usr/share/nginx/html
+	  - name: content
+	    image: debian
+	    volumeMounts:
+	    - name: html
+	      mountPath: /html
+	    command: ["/bin/sh", "-c"]
+	    args:
+	      - while true; do
+	          date >> /html/index.html; sleep 1;
+	        done
+
+* Demo 3 - Pod con múltiples contenedores
+
+	kubectl create -f demo3.yaml
+	kubectl get pods -o wide
+	curl <pod-ip>
+	curl <pod-ip>
+	curl <pod-ip>
+	kubectl delete -f demo3.yaml
+
+* Labels
+
+- Los labels son pares llave:valor que están asignados a objetos tales como pods.
+- Su principal función es identificar ciertas características que son importantes para los operadores.
+- En general, se utilizan para ordenar conjuntos de objetos
+
+	metadata:
+	  labels:
+	    release: stable
+	    environment: dev
+	    tier: frontend
+
+* Label Selectors
+
+- Los labels no son únicos, en general esperamos que varios objetos tengan un mismo label.
+
+- Usando _label_selectors_ podemos identificar un conjunto de elemento con determinadas características.
+
+	selector:
+	    matchLabels:
+	      tier: frontend
+
+* Deployments
+
+- Deployment = Pod + ReplicaSet
+
+- Describimos un estado *deseado* en un deployment y el ReplicaController junto con el Scheduler actuaran para lograr el estado deseado.
+
+* Demo 4 - Deployments
+
+	apiVersion: apps/v1
+	kind: Deployment
+	metadata:
+	  name: hello-world-deployment
+	  labels:
+	    app: hello-app
+	spec:
+	  replicas: 3
+	  selector:
+	    matchLabels:
+	      app: hello-app
+	  template:
+	    metadata:
+	      labels:
+	        app: hello-app
+	    spec:
+	      containers:
+	      - name: hello-nginx
+	        image: nginxdemos/hello
+	        ports:
+	        - containerPort: 80
+
+* Demo 4 - Deployments
+
+	kubectl create -f demo4.yaml
+	kubectl get pods -o wide
+	curl --silent <pod-ip1> | grep Server
+	curl --silent <pod-ip2> | grep Server
+	curl --silent <pod-ip3> | grep Server
+	kubectl delete pod <pod-name1>
+
+Estado actual
+
+.image images/module_05_scaling1.svg _ 410
+
+* Demo 4 - Deployments
+
+Estado deseado
+
+.image images/module_05_scaling2.svg _ 600
+
+* Demo 4 - Deployments - Más replicas!
+
+Podemos cambiar la cantidad de replicas cuando queramos...
+
+	watch -n 1 kubectl get pods -o wide
+	kubectl get deployments
+	kubectl scale deployments/hello-world-deployment --replicas=5
+	kubectl scale deployments/hello-world-deployment --replicas=20
+	kubectl scale deployments/hello-world-deployment --replicas=2
+
+Y el ReplicaController realizara su trabajo
+
+* Pero con tantas replicas...
+
+Ya no es factible acceder por la dirección IP de un pod, necesitamos otro componente que conecte todas las replicas de manera que las replicas sean transparentes para el *usuario*
+
+* Services
+
+Ese es el propósito de los services, un componente que realiza balance de carga entre todas las replicas de un *Deployment*
+
+.image images/module_04_labels.svg _ 450
+
+* Demo 5 - Services
+
+	apiVersion: v1
+	kind: Service
+	metadata:
+	  name: example-service
+	  labels:
+	    app: hello-app
+	spec:
+	  ports:
+	  - port: 80
+	    targetPort: 80
+	  type: ClusterIP
+	  selector:
+	    app: hello-app	
+
+* Demo 5 - Services
+
+	kubectl create -f demo5.yaml
+	kubectl get serviceskubectl scale deployments/hello-world-deployment --replicas=2
+	kubectl get pods -o wide
+	kubectl get endpoints
+	
+	watch -n 1 kubectl get pods,endpoints -o wide
+	watch -n 0.5 "curl --silent <service-ip> | grep Server"
+	kubectl scale deployments/hello-world-deployment --replicas=2
+	kubectl scale deployments/hello-world-deployment --replicas=20
+	kubectl scale deployments/hello-world-deployment --replicas=1
+	kubectl scale deployments/hello-world-deployment --replicas=3
+
+* Exponer las aplicaciones
+
+- Ya hemos logrado escalar nuestra aplicación para poder aprovechar nuestros recursos y manejar grandes cantidades de trafico.
+
+- Pero todo este tiempo solo hemos estado dentro de la red virtual de kubernetes.
+
+- Para exponer nuestro trafico hacia internet necesitamos otro componente: *Ingress*
+
+* Ingress
+
+Un objeto de k8s que maneja acceso externo hacia los servicios del cluster, normalmente trafico HTTP.
+
+.image images/ingress.png _ 500
+
+* Demo - 6
+
+	apiVersion: extensions/v1beta1
+	kind: Ingress
+	metadata:
+	  name: demo-ingress
+	spec:
+	  rules:
+	  - host: k8sdemo.labcomp.cl
+	    http:
+	      paths:
+	      - path: /
+	        backend:
+	          serviceName: example-service
+	          servicePort: 80
+
+*k8sdemo.labcomp.cl*
+
+* Esto es solo la punta del iceberg
+
+.link https://kubernetes.io/docs https://kubernetes.io/docs
+
+.image images/iceberg.jpg _ 650
+
+* Esto es solo la punta del iceberg
+
+No hablamos de varios temas:
+
+- Red
+- Almacenamiento Persistente
+- Múltiples servicios y deployments comunicándose entre ellos
+- Ingress SSL
+
+** Hay muchos temas más....
+
+* Fin
+
+Agradecimientos al Laboratorio de Computación por permitirme usar sus equipos para las demostraciones.
