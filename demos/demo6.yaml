@@ -1,0 +1,14 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: demo-ingress
+spec:
+  rules:
+  - host: k8sdemo.labcomp.cl
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: example-service
+          servicePort: 80
+

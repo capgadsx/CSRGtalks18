@@ -501,7 +501,7 @@ Un objeto de k8s que maneja acceso externo hacia los servicios del cluster, norm
 	          serviceName: example-service
 	          servicePort: 80
 
-*k8sdemo.labcomp.cl*
+*k8sdemo.labcomp.cl:30001*
 
 * Esto es solo la punta del iceberg
 
